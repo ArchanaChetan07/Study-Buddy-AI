@@ -360,16 +360,3 @@ Contributions are welcome! Please follow these steps:
 5. Commit with a conventional commit message: `feat: add topic suggestions`
 6. Open a pull request against `main`
 
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-<div align="center">
-
-Built with ❤️ using Groq · LangChain · Streamlit · Kubernetes
-
-</div>
