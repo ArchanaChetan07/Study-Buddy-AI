@@ -2,7 +2,6 @@
 custom_exception.py — Structured exception with file/line info.
 """
 import sys
-import traceback
 
 
 class CustomException(Exception):

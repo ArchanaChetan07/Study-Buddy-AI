@@ -96,7 +96,7 @@ def sidebar():
               <div class="brand-icon">🧠</div>
               <div>
                 <div class="brand-name">Study Buddy AI</div>
-                <div class="brand-tag">AI-powered quiz engine</div>
+                <div class="brand-tag">Adaptive quiz agent</div>
               </div>
             </div>
             """,
@@ -167,7 +167,7 @@ def render_quiz():
                 current = qm.user_answers[i] if i < len(qm.user_answers) else None
                 idx = q["options"].index(current) if current in q["options"] else 0
                 answer = st.radio(
-                    f"Choose an answer",
+                    "Choose an answer",
                     q["options"],
                     index=idx,
                     key=f"mcq_{i}",
@@ -197,6 +197,10 @@ def render_quiz():
     with col_r:
         if st.button("✅ Submit quiz", use_container_width=True, type="primary"):
             qm.evaluate_quiz()
+            topic = st.session_state.get("current_topic", "Unknown")
+            qtype = st.session_state.get("current_question_type", "Multiple Choice")
+            diff = st.session_state.get("current_difficulty", "Medium")
+            qm.build_adaptive_followup(topic, qtype, diff)
             st.session_state.quiz_submitted = True
             # Save to history
             df = qm.generate_result_dataframe()
@@ -206,7 +210,7 @@ def render_quiz():
                 score = round((correct / total_q) * 100)
                 st.session_state.history.append(
                     {
-                        "topic": st.session_state.get("current_topic", "Unknown"),
+                        "topic": topic,
                         "score": score,
                         "correct": correct,
                         "total": total_q,
@@ -269,6 +273,20 @@ def render_results():
                 st.error(f"Your answer: **{row['user_answer']}**")
                 st.info(f"Correct answer: **{row['correct_answer']}**")
 
+    if qm.weak_areas:
+        st.subheader("Adaptive follow-up")
+        st.caption("Based on missed answers, the agent planned a short remedial set.")
+        st.write("Weak areas: " + "; ".join(qm.weak_areas[:4]))
+        if qm.follow_up_questions:
+            for i, fq in enumerate(qm.follow_up_questions):
+                st.markdown(f"**Practice {i + 1}.** {fq.get('question', '')}")
+                if fq.get("type") == "MCQ" and fq.get("options"):
+                    st.caption("Options: " + " · ".join(fq["options"]))
+
+    if qm.last_trace:
+        with st.expander("Agent trace"):
+            st.json(qm.last_trace)
+
     st.divider()
     col_a, col_b, col_c = st.columns(3)
     with col_a:
@@ -306,9 +324,14 @@ def main():
             return
 
         st.session_state.current_topic = topic
+        st.session_state.current_question_type = question_type
+        st.session_state.current_difficulty = difficulty
         st.session_state.quiz_submitted = False
 
-        with st.spinner(f"Generating {num_questions} {difficulty.lower()} questions on **{topic}**…"):
+        with st.spinner(
+            f"Agent planning & generating {num_questions} {difficulty.lower()} "
+            f"questions on **{topic}**…"
+        ):
             generator = QuestionGenerator()
             success = st.session_state.quiz_manager.generate_questions(
                 generator, topic, question_type, difficulty, num_questions
@@ -318,18 +341,23 @@ def main():
         if success:
             st.toast(f"✅ {num_questions} questions ready!", icon="🎉")
         else:
-            st.error("Failed to generate questions. Check your API key or try a different topic.")
+            st.error(
+                "Failed to generate questions. Check your API key, "
+                "set DEMO_MODE=1 for offline stubs, or try a different topic."
+            )
 
     if not st.session_state.quiz_generated:
         # Welcome state
         st.markdown("## Welcome to Study Buddy AI")
         st.markdown(
-            "Select a topic in the sidebar, choose your settings, and hit **Generate quiz** to begin."
+            "Select a topic in the sidebar, choose your settings, and hit **Generate quiz**. "
+            "An adaptive tutoring agent plans the quiz, checks question quality, "
+            "revises if needed, and can suggest a short follow-up after you score."
         )
         col1, col2, col3 = st.columns(3)
         col1.info("**📝 Multiple choice** or fill-in-the-blank questions")
         col2.info("**🎯 Easy → Hard** difficulty levels")
-        col3.info("**📊 Detailed results** with per-question breakdown")
+        col3.info("**📊 Results + adaptive follow-up** from weak areas")
         return
 
     topic_display = st.session_state.get("current_topic", topic)

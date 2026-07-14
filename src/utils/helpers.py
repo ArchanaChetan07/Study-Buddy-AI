@@ -8,6 +8,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
+from src.agent.loop import run_adaptive_followup, run_quiz_generation_loop
 from src.generator.question_generator import QuestionGenerator
 
 
@@ -20,12 +21,17 @@ class QuizManager:
     """
     Manages the full lifecycle of a quiz:
       generate → attempt → evaluate → export
+    Optional adaptive follow-up after scoring.
     """
 
     def __init__(self):
         self.questions: list[dict] = []
         self.user_answers: list[Optional[str]] = []
         self.results: list[dict] = []
+        self.last_trace: Optional[dict] = None
+        self.agent_message: str = ""
+        self.follow_up_questions: list[dict] = []
+        self.weak_areas: list[str] = []
 
     # ── Generation ────────────────────────────────────────────────────────────
 
@@ -36,13 +42,40 @@ class QuizManager:
         question_type: str,
         difficulty: str,
         num_questions: int,
+        *,
+        use_agent: bool = True,
     ) -> bool:
-        """Call the LLM to generate questions and store them in self.questions."""
+        """
+        Generate questions via the tutoring agent loop (plan→generate→observe→revise)
+        or fall back to direct QuestionGenerator calls when use_agent=False.
+        """
         self.questions = []
         self.user_answers = []
         self.results = []
+        self.follow_up_questions = []
+        self.weak_areas = []
+        self.last_trace = None
+        self.agent_message = ""
 
         try:
+            if use_agent:
+                result = run_quiz_generation_loop(
+                    topic,
+                    question_type=question_type,
+                    difficulty=difficulty,
+                    num_questions=num_questions,
+                )
+                self.last_trace = result.trace.to_dict()
+                self.agent_message = result.message
+                if not result.state.questions:
+                    st.error(result.message or "Agent failed to generate questions.")
+                    return False
+                self.questions = list(result.state.questions)
+                self.user_answers = [None] * len(self.questions)
+                return result.status in {"ok", "partial"}
+
+            # Legacy direct path (kept for compatibility / tests)
+            _ = generator  # caller may still pass a generator
             for _ in range(num_questions):
                 if question_type == "Multiple Choice":
                     q = generator.generate_mcq(topic, difficulty.lower())
@@ -64,7 +97,6 @@ class QuizManager:
                             "correct_answer": q.answer,
                         }
                     )
-                # Pre-fill answers list with None placeholders
                 self.user_answers.append(None)
 
         except Exception as exc:
@@ -72,6 +104,33 @@ class QuizManager:
             return False
 
         return True
+
+    def build_adaptive_followup(self, topic: str, question_type: str, difficulty: str):
+        """After evaluate_quiz, plan remedial questions from weak areas."""
+        if not self.results:
+            return
+        from src.agent.types import AgentState
+
+        state = AgentState(
+            topic=topic,
+            question_type=question_type,
+            difficulty=difficulty,
+            num_questions=len(self.questions),
+            questions=list(self.questions),
+            results=list(self.results),
+        )
+        result = run_adaptive_followup(state, results=self.results)
+        self.weak_areas = list(result.state.weak_areas)
+        self.follow_up_questions = list(result.state.follow_up_questions)
+        if result.trace:
+            prev = self.last_trace or {"run_id": result.trace.run_id, "spans": []}
+            # Merge follow-up spans into last trace for UI
+            prev_spans = list(prev.get("spans") or [])
+            merged = result.trace.to_dict()
+            self.last_trace = {
+                "run_id": merged["run_id"],
+                "spans": prev_spans + list(merged.get("spans") or []),
+            }
 
     # ── Evaluation ────────────────────────────────────────────────────────────
 

@@ -1,5 +1,3 @@
-import pytest
-
 class TestStudyBuddy:
     def test_topic_extraction(self):
         text = "Today we will study photosynthesis, cellular respiration, and DNA replication"

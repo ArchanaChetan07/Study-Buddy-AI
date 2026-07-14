@@ -1,25 +1,53 @@
 """
 question_generator.py — LLM-backed question generation with retry logic.
+Supports DEMO_MODE stubs so tests and offline demos run without Groq.
 """
-from langchain.output_parsers import PydanticOutputParser
+from __future__ import annotations
 
 from src.common.custom_exception import CustomException
 from src.common.logger import get_logger
 from src.config.settings import settings
 from src.llm.groq_client import get_groq_llm
 from src.models.question_schemas import FillBlankQuestion, MCQQuestion
-from src.prompts.templates import fill_blank_prompt_template, mcq_prompt_template
+
+
+def _demo_mcq(topic: str, difficulty: str) -> MCQQuestion:
+    """Deterministic offline MCQ for DEMO_MODE."""
+    topic_label = (topic or "General knowledge").strip() or "General knowledge"
+    level = (difficulty or "medium").capitalize()
+    correct = f"A core fact about {topic_label}"
+    return MCQQuestion(
+        question=f"[{level}] Which statement best relates to {topic_label}?",
+        options=[
+            correct,
+            f"An unrelated claim about {topic_label}",
+            f"A common misconception about {topic_label}",
+            f"A detail from a different subject than {topic_label}",
+        ],
+        correct_answer=correct,
+    )
+
+
+def _demo_fill_blank(topic: str, difficulty: str) -> FillBlankQuestion:
+    """Deterministic offline fill-in-the-blank for DEMO_MODE."""
+    topic_label = (topic or "General knowledge").strip() or "General knowledge"
+    level = (difficulty or "medium").capitalize()
+    return FillBlankQuestion(
+        question=f"[{level}] A key idea in {topic_label} is ___.",
+        answer=topic_label.split()[0] if topic_label.split() else "concept",
+    )
 
 
 class QuestionGenerator:
     """
-    Generates MCQ and fill-in-the-blank questions via the Groq LLaMA model.
+    Generates MCQ and fill-in-the-blank questions via Groq LLaMA (or DEMO stubs).
     Includes retry logic and structural validation.
     """
 
     def __init__(self):
         self.llm = get_groq_llm()
         self.logger = get_logger(self.__class__.__name__)
+        self.demo_mode = settings.DEMO_MODE
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
@@ -46,9 +74,7 @@ class QuestionGenerator:
 
             except Exception as exc:
                 last_error = exc
-                self.logger.warning(
-                    "Attempt %d failed: %s", attempt, str(exc)
-                )
+                self.logger.warning("Attempt %d failed: %s", attempt, str(exc))
 
         raise CustomException(
             f"Generation failed after {settings.MAX_RETRIES} attempts",
@@ -66,10 +92,17 @@ class QuestionGenerator:
         - correct_answer must be one of the options
         """
         try:
-            parser = PydanticOutputParser(pydantic_object=MCQQuestion)
-            question = self._retry_and_parse(
-                mcq_prompt_template, parser, topic, difficulty
-            )
+            if self.demo_mode:
+                question = _demo_mcq(topic, difficulty)
+            else:
+                from langchain_core.output_parsers import PydanticOutputParser
+
+                from src.prompts.templates import mcq_prompt_template
+
+                parser = PydanticOutputParser(pydantic_object=MCQQuestion)
+                question = self._retry_and_parse(
+                    mcq_prompt_template, parser, topic, difficulty
+                )
 
             # Structural validation
             if len(question.options) != 4:
@@ -99,10 +132,17 @@ class QuestionGenerator:
         - answer must be non-empty
         """
         try:
-            parser = PydanticOutputParser(pydantic_object=FillBlankQuestion)
-            question = self._retry_and_parse(
-                fill_blank_prompt_template, parser, topic, difficulty
-            )
+            if self.demo_mode:
+                question = _demo_fill_blank(topic, difficulty)
+            else:
+                from langchain_core.output_parsers import PydanticOutputParser
+
+                from src.prompts.templates import fill_blank_prompt_template
+
+                parser = PydanticOutputParser(pydantic_object=FillBlankQuestion)
+                question = self._retry_and_parse(
+                    fill_blank_prompt_template, parser, topic, difficulty
+                )
 
             # Structural validation
             if "___" not in question.question:
@@ -112,7 +152,9 @@ class QuestionGenerator:
             if not question.answer.strip():
                 raise ValueError("Fill-in-the-blank answer must not be empty")
 
-            self.logger.info("Valid fill-in-the-blank question generated for topic '%s'", topic)
+            self.logger.info(
+                "Valid fill-in-the-blank question generated for topic '%s'", topic
+            )
             return question
 
         except Exception as exc:
