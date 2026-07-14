@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,6 +14,7 @@ from src.agent.planner import (
 from src.agent.tools import call_tool
 from src.agent.types import AgentState, Observation, Plan
 from src.config.settings import settings
+from src.observability.metrics import record_quiz_generation
 from src.tracing import Trace, new_run_id, span
 
 
@@ -101,6 +103,7 @@ def run_quiz_generation_loop(
     trace = Trace(run_id=new_run_id())
     steps_used = 0
     max_steps = settings.MAX_AGENT_STEPS
+    t0 = time.perf_counter()
 
     with span(trace, "phase:generate", topic=state.topic):
         plan = create_initial_plan(state)
@@ -124,6 +127,15 @@ def run_quiz_generation_loop(
         status = "error"
         message = "Failed to generate questions."
 
+    tool_steps = sum(1 for s in trace.spans if s.name.startswith("tool:"))
+    record_quiz_generation(
+        status=status,
+        question_type=state.question_type,
+        latency_s=time.perf_counter() - t0,
+        revisions=state.revisions,
+        tool_steps=tool_steps,
+    )
+
     return AgentResult(
         state=state,
         trace=trace,
@@ -132,6 +144,8 @@ def run_quiz_generation_loop(
         extras={
             "revisions": state.revisions,
             "quality_issues": list(state.quality_issues),
+            "tool_steps": tool_steps,
+            "steps_budget": max_steps,
         },
     )
 
