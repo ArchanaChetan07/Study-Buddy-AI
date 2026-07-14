@@ -29,14 +29,13 @@ COPY . .
 # Install the package in editable mode
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8501
+ENV DEMO_MODE=1 \
+    METRICS_PORT=9090
+
+EXPOSE 8501 9090
 
 # Health check: ping Streamlit's health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-CMD ["streamlit", "run", "application.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0", \
-     "--server.headless=true", \
-     "--browser.gatherUsageStats=false"]
+CMD ["python", "scripts/boot.py"]

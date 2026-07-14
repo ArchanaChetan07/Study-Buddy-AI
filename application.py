@@ -7,8 +7,15 @@ import streamlit as st
 from dotenv import load_dotenv
 from src.utils.helpers import QuizManager, rerun
 from src.generator.question_generator import QuestionGenerator
+from src.observability.metrics import start_metrics_server
 
 load_dotenv()
+
+# Prometheus scrape endpoint companion (default :9090/metrics)
+try:
+    _metrics_port = start_metrics_server()
+except OSError:
+    _metrics_port = None
 
 
 def configure_page():
@@ -315,6 +322,9 @@ def render_results():
 def main():
     configure_page()
     init_session_state()
+
+    if _metrics_port:
+        st.sidebar.caption(f"Prometheus metrics on :{_metrics_port}/metrics")
 
     topic, question_type, difficulty, num_questions, generate = sidebar()
 

@@ -14,5 +14,6 @@ setup(
         "pydantic>=2.0.0",
         "pandas>=2.0.0",
         "python-dotenv>=1.0.0",
+        "prometheus-client>=0.20.0",
     ],
 )
