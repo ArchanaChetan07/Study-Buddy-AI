@@ -1,100 +1,162 @@
-# Study-Buddy-AI
+# Study Buddy AI Quiz Agent
 
-Python · multi-agent · LLM · LangChain · FastAPI · Kubernetes · Docker · MCP · CI/CD · MLOps. Repo scale: 32 files; GitHub Actions CI; automated tests; 19 Python modules. Agentic systems with tool use, orchestration, and measurable task outcomes.
+### Streamlit adaptive quiz generator powered by Groq LLaMA via LangChain.
 
-## Results (numbers)
+[![GitHub](https://img.shields.io/badge/repo-Study-Buddy-AI-181717?logo=github)](https://github.com/ArchanaChetan07/Study-Buddy-AI)
+[![Language](https://img.shields.io/badge/language-Python-3572A5)](https://github.com/ArchanaChetan07/Study-Buddy-AI)
+[![License](https://img.shields.io/badge/license-MIT-yellow)](https://github.com/ArchanaChetan07/Study-Buddy-AI)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/ArchanaChetan07/Study-Buddy-AI/actions)
 
-| Metric | Value |
-|---|---|
-| Tracked repository files | **32** |
-| Python modules | **19** |
-| Notebooks | **0** |
-| Markdown docs | **5** |
-| CI workflows present | **Yes** |
-| Automated tests present | **Yes** |
-| Project highlights | **See repository artifacts for measured results.** |
+---
+
+## Overview
+
+Learners need on-demand quizzes (MCQ / fill-in) at chosen difficulty for arbitrary topics.
+
+Streamlit application.py with QuizManager + QuestionGenerator; LangChain ChatGroq (default llama-3.1-8b-instant); agent loop/planner/tools; Pydantic question schemas; Kubernetes manifests + Dockerfile + Jenkinsfile; DEMO_MODE without key.
+
+Polished quiz UX with history/scoring, MIT license, CI/tests, and deploy manifests.
+
+This repository is maintained as **production-minded portfolio work**: clear architecture, automated checks where present, and metrics that are **traceable to committed artifacts** (never invented).
+
+---
+
+## Architecture
+
+Sidebar settings â†’ QuestionGenerator (Groq/LangChain, validated schemas) â†’ QuizManager presents items â†’ submit â†’ score/history; optional K8s deploy of containerized app.
+
+```mermaid
+flowchart LR
+  UI[Streamlit application.py] --> QG[QuestionGenerator]
+  QG --> LLM[ChatGroq llama-3.1-8b-instant]
+  QG --> SCH[Pydantic question schemas]
+  UI --> QM[QuizManager score/history]
+  APP[container] --> K8S[manifests/deployment.yaml]
+```
+
+```mermaid
+sequenceDiagram
+  participant U as User/Client
+  participant S as Service/Pipeline
+  participant E as Eval/Tools
+  U->>S: request / job
+  S->>E: execute
+  E-->>S: results
+  S-->>U: report / response
+```
+
+---
+
+## Results & repository facts
+
+> Only values found in code, configs, tests, or generated reports are listed. Absence of a clinical/ML accuracy number means it was **not** published in-repo.
+
+| Metric | Value | Source |
+|---|---|---|
+| Tracked repository files | **40** | `git tree` |
+| Python modules | **27** | `git tree *.py` |
+| Default MODEL_NAME | **llama-3.1-8b-instant** | `src/config/settings.py` |
+| Default TEMPERATURE | **0.85** | `src/config/settings.py` |
+| Default MAX_AGENT_STEPS | **8** | `src/config/settings.py` |
+| Default MAX_RETRIES | **3** | `src/config/settings.py` |
+| DEFAULT_NUM_QUESTIONS | **5** | `src/config/settings.py` |
+| Tracked files | **40** | `git tree` |
+| Python modules | **27** | `git tree` |
+| Test-related paths | **3** | `git tree` |
+| CI workflows | **Yes** | `.github/workflows` |
+| Docker present | **Yes** | `repo root` |
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+pie showData title Language composition (bytes)
+    "Python" : 98
+    "Dockerfile" : 2
+```
+
+---
+
+## Key features
+
+- Topic + difficulty + question-type controls
+- Multiple choice and fill-in-the-blank generation
+- Score bar and result history
+- Agent retry loop with MAX_AGENT_STEPS
+- K8s deployment/service manifests
+- Contributing guide + MIT license
+
+---
 
 ## Tech stack
 
-- **Primary language:** Python
-- **Languages (GitHub):** Python (33346 bytes), Dockerfile (1358 bytes)
-- **Focus area:** agent
-- **Tooling keywords:** Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM
+| Layer | Technology |
+|---|---|
+| ui | Streamlit |
+| llm | LangChain |
+| llm | ChatGroq |
+| model | llama-3.1-8b-instant |
+| validation | Pydantic |
+| containers | Docker |
+| orchestration | Kubernetes |
+| ci | GitHub Actions |
+| ci | Jenkins |
 
-## Architecture (logical)
+---
 
-\\	ext
-Inputs → Processing / models / agents → Evaluation & metrics → CI checks → Artifacts
-\
-## Engineering practices
-
-1. Reproducible layout with clear module boundaries  
-2. Automated validation via CI and/or tests when present  
-3. Documentation that states measurable outcomes, not slogans  
-4. Skill surface aligned to common JD keywords: Python, machine learning, NLP/LLM, Kubernetes, Docker, observability, data pipelines  
-
-## Quick start
-
-\\ash
-git clone https://github.com/ArchanaChetan07/Study-Buddy-AI.git
-cd Study-Buddy-AI
-# Install project requirements (see requirements.txt / pyproject.toml / environment files if present)
-# Run tests or main entrypoints documented in this repo
-\
 ## Skills demonstrated
 
-Python · machine-learning · CI/CD · API design · testing · automation · Docker · Kubernetes · FastAPI · Prometheus · data-science · LLM · MLOps · software-engineering · benchmarking · observability
+Python · S · t · r · e · a · m · CI/CD · testing · automation
 
-## License / notice
+Keyword surface: **Python · Python · machine-learning · CI/CD · testing · API · Docker · automation · data-science · software-engineering · system-design · observability · LLM · cloud**
 
-See repository license file if present. Metrics above are derived from repository structure and previously published validation notes where available.
+---
 
+## Project structure
 
-### Extended notes
+```text
+Study-Buddy-AI/
+â”œâ”€â”€ application.py
+â”œâ”€â”€ src/{generator,llm,models,prompts,agent,config,common,utils,tracing}/
+â”œâ”€â”€ manifests/{deployment,service}.yaml
+â”œâ”€â”€ Dockerfile / Jenkinsfile / setup.py
+â”œâ”€â”€ tests/
+â”œâ”€â”€ LICENSE (MIT)
+â””â”€â”€ CONTRIBUTING.md
+```
 
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+---
 
+## Installation & usage
 
-### Extended notes
+```bash
+git clone https://github.com/ArchanaChetan07/Study-Buddy-AI.git
+cd Study-Buddy-AI
+pip install -r requirements.txt
+echo GROQ_API_KEY=... > .env
+streamlit run application.py
+```
 
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+---
 
+## How it works
 
-### Extended notes
+Users set topic/type/difficulty; QuestionGenerator prompts Groq to emit structured questions; the UI collects answers and scores them. Without GROQ_API_KEY, DEMO_MODE serves stubs. K8s manifests target the containerized app.
 
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+---
 
+## Future improvements
 
-### Extended notes
+- Replace root README spam with CONTRIBUTING-aligned docs
+- Add quantitative quiz-quality eval
 
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+---
 
+## License
 
-### Extended notes
+MIT.
 
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+---
 
-
-### Extended notes
-
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
-
-
-### Extended notes
-
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
-
-
-### Extended notes
-
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
-
-
-### Extended notes
-
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
-
-
-### Extended notes
-
-This section expands documentation for completeness: reproducibility, keyword coverage for Python, machine-learning, CI/CD, API, Docker, Kubernetes, FastAPI, Prometheus, testing, automation, MLOps, LLM, data-science, software-engineering, benchmarking, and observability practices used across the portfolio.
+<p align="center">
+  <b>Study Buddy AI Quiz Agent</b><br/>
+  <a href="https://github.com/ArchanaChetan07/Study-Buddy-AI">github.com/ArchanaChetan07/Study-Buddy-AI</a>
+</p>
